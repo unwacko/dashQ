@@ -30,14 +30,14 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-It opens in your browser at `http://localhost:8501`. Use the sidebar to switch between the four screens:
+It opens in your browser at `http://localhost:8501`. Use the menu at the top to switch between the four screens:
 
 | Screen | Link | Used by |
 |---|---|---|
-| Join | `/?view=join` | Customers, on their phone |
-| Staff | `/?view=staff` | People at the counters |
-| Display | `/?view=display` | A TV or projector in the waiting area |
-| Analytics | `/?view=analytics` | The manager |
+| Join | `/` | Customers, on their phone |
+| Staff | `/staff` | People at the counters |
+| Display | `/display` | A TV or projector in the waiting area |
+| Analytics | `/analytics` | The manager |
 
 Tip: open the Staff screen in one browser window and the Join screen in another (or on your phone). Press "Next" on the Staff screen and watch the customer's screen update.
 
@@ -54,6 +54,8 @@ To fill the analytics page with data, go to **Staff → Demo tools → Load 2 we
 | **SQLite** (`sqlite3`) | Storing tickets, messages and settings | It comes with Python, needs no server, and the whole database is one file |
 | **pandas** | Analytics (grouping visits by hour and day) | It makes "average arrivals per hour" a one-line calculation |
 | **qrcode** | Generating the "scan to join" QR code | Small library that does exactly one thing |
+| **Streamlit theming + CSS** | The look: soft gradient glow, serif headings, pill buttons, cards | Streamlit's `config.toml` covers colours and fonts, and a small block of CSS handles the rest |
+| **Newsreader + Figtree fonts** | Headings (serif) and body text | Free fonts (SIL Open Font License), saved in `static/fonts/` so the app doesn't depend on Google Fonts |
 | **pytest** | Automated tests for the queue logic | Lets us change code without being scared of breaking it |
 | **Git + GitHub** | Version control and sharing code within the team | |
 | **Streamlit Community Cloud** | Hosting the app online for free | Deploys straight from GitHub in a couple of clicks |
@@ -101,7 +103,9 @@ For example, with 2 counters both busy and 5 minutes per person, positions 1 and
 
 **11. Testing.** We wrote 17 tests in `tests/test_queue_core.py` covering phone number validation, ordering, priority, no-shows, the wait formula with one and two counters, reminders and daily stats. The tests use a fake clock so we can "fast-forward" time instead of waiting.
 
-**12. Putting it online.** We host it on Streamlit Community Cloud. While getting it ready, we realised the server runs on UTC, which would have shown every time 5½ hours off. We fixed it by always converting to India time (`Asia/Kolkata`). We also made the QR code use whatever address the app is opened at, so it works online and on a laptop without changing anything.
+**12. Redesign.** The first version used Streamlit's default look, which felt plain. We redesigned it, taking inspiration from the clean style of sarvam.ai's website: an off-white background with a soft orange-and-blue glow at the top, big serif headings, small uppercase labels, rounded white cards and pill-shaped buttons. The colours and fonts are set in `.streamlit/config.toml`, and the rest is a block of CSS in `app.py`. We also moved the screens from a sidebar into a menu at the top, so each screen has its own address (`/staff`, `/display`, ...).
+
+**13. Putting it online.** We host it on Streamlit Community Cloud. While getting it ready, we realised the server runs on UTC, which would have shown every time 5½ hours off. We fixed it by always converting to India time (`Asia/Kolkata`). We also made the QR code use whatever address the app is opened at, so it works online and on a laptop without changing anything.
 
 ---
 
@@ -109,8 +113,10 @@ For example, with 2 counters both busy and 5 minutes per person, positions 1 and
 
 ```
 dashQ/
-├── app.py                  # the four screens (Streamlit)
+├── app.py                  # the four screens (Streamlit) and the styling
 ├── queue_core.py           # queue engine: tickets, ordering, wait times, reminders, stats
+├── .streamlit/config.toml  # theme: colours, fonts, rounded buttons
+├── static/                 # logo, icon and font files
 ├── tests/
 │   └── test_queue_core.py  # pytest tests for the engine
 ├── requirements.txt

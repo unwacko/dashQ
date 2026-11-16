@@ -1,0 +1,58 @@
+# dashQ look and feel: off-white background, serif headings, pill buttons.
+[server]
+enableStaticServing = true
+
+[client]
+toolbarMode = "viewer"
+
+[theme]
+base = "light"
+primaryColor = "#2E3060"
+backgroundColor = "#FAFAFA"
+secondaryBackgroundColor = "#F2F2F5"
+textColor = "#1F1F1F"
+linkColor = "#3B3FB6"
+borderColor = "#E6E6EC"
+showWidgetBorder = true
+baseRadius = "0.75rem"
+buttonRadius = "full"
+font = "Figtree, sans-serif"
+headingFont = "Newsreader, serif"
+headingFontWeights = 400
+chartCategoricalColors = ["#6C72E8", "#F97316", "#22A06B", "#D946EF"]
+
+[[theme.fontFaces]]
+family = "Figtree"
+url = "app/static/fonts/figtree-latin-400-normal.woff2"
+weight = 400
+
+[[theme.fontFaces]]
+family = "Figtree"
+url = "app/static/fonts/figtree-latin-500-normal.woff2"
+weight = 500
+
+[[theme.fontFaces]]
+family = "Figtree"
+url = "app/static/fonts/figtree-latin-600-normal.woff2"
+weight = 600
+
+[[theme.fontFaces]]
+family = "Newsreader"
+url = "app/static/fonts/newsreader-latin-300-normal.woff2"
+weight = 300
+
+[[theme.fontFaces]]
+family = "Newsreader"
+url = "app/static/fonts/newsreader-latin-400-normal.woff2"
+weight = 400
+
+[[theme.fontFaces]]
+family = "Newsreader"
+url = "app/static/fonts/newsreader-latin-500-normal.woff2"
+weight = 500
+
+[[theme.fontFaces]]
+family = "Newsreader"
+url = "app/static/fonts/newsreader-latin-400-italic.woff2"
+weight = 400
+style = "italic"
