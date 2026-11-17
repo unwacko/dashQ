@@ -9,28 +9,44 @@ Four screens, each can be opened on a different device:
 
 Run:  streamlit run app.py
 """
+import hashlib
+import importlib
 from html import escape
 from io import BytesIO
+from pathlib import Path
 from urllib.parse import urlsplit
 
 import pandas as pd
 import qrcode
 import streamlit as st
 
-from queue_core import CANCELLED, DONE, NO_SHOW, SERVING, WAITING, QueueSystem, clean_phone
+import queue_core
+
+# When Streamlit Cloud pulls new code it re-runs app.py but can keep the old
+# queue_core module in memory. Reload it whenever queue_core.py changes, so the
+# two files never get out of sync after an update.
+CORE_VERSION = hashlib.md5(Path(queue_core.__file__).read_bytes()).hexdigest()
+if getattr(queue_core, "LOADED_VERSION", None) != CORE_VERSION:
+    queue_core = importlib.reload(queue_core)
+    queue_core.LOADED_VERSION = CORE_VERSION
+
+from queue_core import CANCELLED, DONE, NO_SHOW, SERVING, WAITING, QueueSystem, clean_phone  # noqa: E402
 
 st.set_page_config(page_title="dashQ", page_icon="static/icon.png", layout="wide")
 
 
 @st.cache_resource
-def get_system() -> QueueSystem:
-    """One shared queue for every visitor, stored in dashq.db. Starts with sample data."""
+def get_system(core_version: str) -> QueueSystem:
+    """
+    One shared queue for every visitor, stored in dashq.db. Starts with sample data.
+    A new engine is created whenever queue_core.py changes (core_version).
+    """
     system = QueueSystem("dashq.db")
     system.ensure_sample_data()
     return system
 
 
-qs = get_system()
+qs = get_system(CORE_VERSION)
 
 # =============================================================================
 # Styling
