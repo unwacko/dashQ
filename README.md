@@ -41,7 +41,7 @@ It opens in your browser at `http://localhost:8501`. Use the menu at the top to 
 
 Tip: open the Staff screen in one browser window and the Join screen in another (or on your phone). Press "Next" on the Staff screen and watch the customer's screen update.
 
-To fill the analytics page with data, go to **Staff → Demo tools → Load 2 weeks of sample history**. This is randomly generated sample data, not real visits.
+The first time the app starts, it fills itself with sample data so there's something to show: 5 people waiting in the queue and two weeks of past visits for the analytics charts. This data is randomly generated, not real visits. To start from an empty queue, press **Staff → Clear**.
 
 ---
 
@@ -101,7 +101,7 @@ For example, with 2 counters both busy and 5 minutes per person, positions 1 and
 
 **10. Analytics.** Using pandas we added charts for busiest hours, average wait by hour, visitors per day and busiest weekdays, plus a CSV download. The page also points out the peak hour, which is when opening an extra counter helps the most.
 
-**11. Testing.** We wrote 17 tests in `tests/test_queue_core.py` covering phone number validation, ordering, priority, no-shows, the wait formula with one and two counters, reminders and daily stats. The tests use a fake clock so we can "fast-forward" time instead of waiting.
+**11. Testing.** We wrote 18 tests in `tests/test_queue_core.py` covering phone number validation, ordering, priority, no-shows, the wait formula with one and two counters, reminders and daily stats. The tests use a fake clock so we can "fast-forward" time instead of waiting.
 
 **12. Redesign.** The first version used Streamlit's default look, which felt plain. We redesigned it, taking inspiration from the clean style of sarvam.ai's website: an off-white background with a soft orange-and-blue glow at the top, big serif headings, small uppercase labels, rounded white cards and pill-shaped buttons. The colours and fonts are set in `.streamlit/config.toml`, and the rest is a block of CSS in `app.py`. We also moved the screens from a sidebar into a menu at the top, so each screen has its own address (`/staff`, `/display`, ...).
 
@@ -139,7 +139,7 @@ pytest
 4. Choose the repository `unwacko/dashQ`, branch `main`, main file `app.py`.
 5. Pick an address (for example `dashq.streamlit.app`) and click **Deploy**.
 
-Things to know about the free tier: the app goes to sleep after a few days without visitors, and the database file is reset when it restarts. Before a demo, open the app a few minutes early to wake it up.
+Things to know about the free tier: the app goes to sleep after a few days without visitors, and the database file is reset when it restarts (which also brings the sample data back). Before a demo, open the app a few minutes early to wake it up.
 
 **Using it on a laptop with phones on the same Wi-Fi:** find your laptop's IP address (`ipconfig` on Windows, `ifconfig` on Mac/Linux) and open `http://<your-ip>:8501` on the phone. If the QR code shows the wrong address, set it under **Staff → Settings → Public app address**.
 

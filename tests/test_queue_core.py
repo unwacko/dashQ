@@ -140,3 +140,13 @@ def test_today_stats(qs, clock):
 def test_seed_demo_history(qs):
     assert qs.seed_demo_history(days=3) > 0
     assert qs.waiting() == []  # history never touches the live queue
+
+
+def test_sample_data_loads_once(qs):
+    assert qs.ensure_sample_data() is True
+    assert [t.name for t in qs.waiting()] == ["Aarav", "Diya", "Kabir", "Meera", "Rohan"]
+    assert len(qs.history()) > 5          # two weeks of past visits too
+    assert qs.ensure_sample_data() is False  # not added twice
+    qs.reset_all()
+    assert qs.ensure_sample_data() is False  # stays empty after Clear
+    assert qs.waiting() == []

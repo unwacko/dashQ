@@ -9,7 +9,6 @@ Four screens, each can be opened on a different device:
 
 Run:  streamlit run app.py
 """
-import random
 from html import escape
 from io import BytesIO
 from urllib.parse import urlsplit
@@ -25,8 +24,10 @@ st.set_page_config(page_title="dashQ", page_icon="static/icon.png", layout="wide
 
 @st.cache_resource
 def get_system() -> QueueSystem:
-    """One shared queue for every visitor, stored in dashq.db."""
-    return QueueSystem("dashq.db")
+    """One shared queue for every visitor, stored in dashq.db. Starts with sample data."""
+    system = QueueSystem("dashq.db")
+    system.ensure_sample_data()
+    return system
 
 
 qs = get_system()
@@ -321,8 +322,8 @@ def staff_page():
         b1, b2 = st.columns(2)
         with b1.popover("⚙ Settings", width="stretch"):
             settings_panel()
-        with b2.popover("✦ Demo tools", width="stretch"):
-            demo_panel()
+        with b2.popover("Clear", icon=":material/delete:", width="stretch"):
+            clear_panel()
     staff_panel()
     footer()
 
@@ -432,16 +433,10 @@ def settings_panel():
         st.rerun()
 
 
-def demo_panel():
-    if st.button("Load 2 weeks of sample history", width="stretch"):
-        n = qs.seed_demo_history()
-        st.toast(f"Added {n} past visits")
-    if st.button("Add 5 random people to the queue", width="stretch"):
-        names = ["Aarav", "Diya", "Kabir", "Meera", "Rohan", "Sara", "Vihaan", "Anaya", "Ishaan", "Zoya"]
-        for _ in range(5):
-            qs.join(f"9{random.randint(100000000, 999999999)}", random.choice(names))
-        st.rerun()
-    if st.button("Clear everything", width="stretch"):
+def clear_panel():
+    html('<p style="margin:0 0 .8rem">This removes everyone in the queue, all past visits and the '
+         'message log. Settings are kept.</p>')
+    if st.button("Yes, clear everything", type="primary", width="stretch"):
         qs.reset_all()
         st.session_state.pop("ticket_id", None)
         st.rerun()
@@ -502,8 +497,8 @@ def analytics_page():
     hist = qs.history()
     if len(hist) < 5:
         with st.container(key="card-empty"):
-            html('<div class="insight"><span class="spark">✦</span><div>Not enough data yet. Serve some people, '
-                 'or open <b>Staff → Demo tools → Load 2 weeks of sample history</b>.</div></div>')
+            html('<div class="insight"><span class="spark">✦</span><div>Not enough data yet. '
+                 'Charts appear here once people start joining and being served.</div></div>')
         footer()
         return
 

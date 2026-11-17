@@ -40,6 +40,7 @@ DEFAULT_SETTINGS = {
     "counters": "1",           # how many desks serve people at the same time
     "avg_minutes": "5",        # fallback service time until we have real data
     "reminder_lead": "10",     # send a "head back" SMS this many minutes before the turn
+    "sample_loaded": "0",      # set to 1 once the sample data has been added on first start
     "public_url": "",          # address for the join QR code; blank = the address the app is opened at
 }
 
@@ -353,6 +354,29 @@ class QueueSystem:
             self.db.execute("DELETE FROM tickets")
             self.db.execute("DELETE FROM messages")
             self.db.commit()
+
+    SAMPLE_PEOPLE = [("9876543210", "Aarav"), ("9876543211", "Diya"), ("9876543212", "Kabir"),
+                     ("9876543213", "Meera"), ("9876543214", "Rohan")]
+
+    def load_sample_data(self) -> None:
+        """Two weeks of past visits plus 5 people waiting right now."""
+        with self.lock:
+            self.seed_demo_history()
+            for phone, name in self.SAMPLE_PEOPLE:
+                self.join(phone, name)
+            self.set_setting("sample_loaded", 1)
+
+    def ensure_sample_data(self) -> bool:
+        """
+        Load the sample data the very first time the app starts with an empty
+        database. After someone presses Clear it stays empty. Returns True if loaded.
+        """
+        with self.lock:
+            empty = self.db.execute("SELECT COUNT(*) AS n FROM tickets").fetchone()["n"] == 0
+            if empty and self.get_setting("sample_loaded") != "1":
+                self.load_sample_data()
+                return True
+            return False
 
     def seed_demo_history(self, days: int = 14, seed: int = 7) -> int:
         """
