@@ -1,16 +1,9 @@
-"""
-queue_core.py - the queue engine for dashQ.
+# queue_core.py
+# all the queue logic for dashQ (no streamlit code in here, so the tests can use it too)
+#
+# ticket goes: waiting -> serving -> done
+#   (no_show if they don't turn up, cancelled if they leave the queue)
 
-Plain Python + SQLite (standard library only). No UI code lives here, so the
-same engine can be driven by the Streamlit app, the tests, or a terminal script.
-
-Ticket life cycle:
-
-    waiting --call_next()--> serving --complete()--> done
-       |                        |
-       |                        +--no_show()-------> no_show
-       +--cancel()-------------------------------> cancelled
-"""
 from __future__ import annotations
 
 import os
@@ -23,13 +16,12 @@ from datetime import datetime, timedelta
 from typing import Callable, Optional
 from zoneinfo import ZoneInfo
 
-# Cloud servers (e.g. Streamlit Community Cloud) run on UTC, so always use the
-# business's local time. Override with the DASHQ_TZ environment variable.
+# streamlit cloud runs on UTC so we always use india time (can change it with DASHQ_TZ)
 LOCAL_TZ = ZoneInfo(os.environ.get("DASHQ_TZ", "Asia/Kolkata"))
 
 
 def local_now() -> datetime:
-    """Current local time, without tzinfo (that's how it's stored in SQLite)."""
+    # current time in india, saved without the timezone part
     return datetime.now(LOCAL_TZ).replace(tzinfo=None)
 
 WAITING, SERVING, DONE, CANCELLED, NO_SHOW = "waiting", "serving", "done", "cancelled", "no_show"
@@ -97,7 +89,7 @@ class Ticket:
 
 
 def clean_phone(raw: str) -> Optional[str]:
-    """Return a 10-digit Indian mobile number, or None if invalid."""
+    # returns the 10 digit number, or None if it's not a valid indian mobile no.
     digits = re.sub(r"\D", "", raw or "")
     if digits.startswith("91") and len(digits) == 12:
         digits = digits[2:]
@@ -117,7 +109,7 @@ class QueueSystem:
             self.db.execute("INSERT OR IGNORE INTO settings(key, value) VALUES (?, ?)", (k, v))
         self.db.commit()
 
-    # ------------------------------------------------------------------ settings
+    # --- settings ---
     def get_setting(self, key: str) -> str:
         row = self.db.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
         return row["value"] if row else DEFAULT_SETTINGS[key]
@@ -139,7 +131,7 @@ class QueueSystem:
     def reminder_lead(self) -> int:
         return int(self.get_setting("reminder_lead"))
 
-    # ------------------------------------------------------------------ queries
+    # --- queries ---
     def _tickets(self, where: str = "1=1", params=()) -> list[Ticket]:
         rows = self.db.execute(f"SELECT * FROM tickets WHERE {where}", params).fetchall()
         return [Ticket.from_row(r) for r in rows]
@@ -151,7 +143,7 @@ class QueueSystem:
         return t[0] if t else None
 
     def waiting(self) -> list[Ticket]:
-        """Waiting tickets in serving order: priority first, then first-come-first-served."""
+        # priority people first, then whoever came first
         return self._tickets(
             "status = ? ORDER BY priority DESC, joined_at ASC, id ASC", (WAITING,)
         )
@@ -168,16 +160,13 @@ class QueueSystem:
         return t[0] if t else None
 
     def position(self, ticket: Ticket) -> Optional[int]:
-        """1-based position in the waiting line (None if not waiting)."""
+        # position in line (starts at 1), None if they're not waiting
         ids = [t.id for t in self.waiting()]
         return ids.index(ticket.id) + 1 if ticket.id in ids else None
 
     def avg_service_minutes(self, sample: int = 10) -> float:
-        """
-        Average real service time of the last `sample` finished tickets.
-        Falls back to the configured value until at least 3 tickets are done,
-        so the estimate learns from how fast the desk actually works.
-        """
+        # avg time taken for the last 10 people
+        # until 3 people are done we just use the number from settings
         rows = self.db.execute(
             "SELECT called_at, finished_at FROM tickets "
             "WHERE status = ? AND called_at IS NOT NULL AND finished_at IS NOT NULL "
@@ -194,13 +183,9 @@ class QueueSystem:
         return max(0.5, sum(mins) / len(mins))
 
     def wait_minutes(self, ticket: Ticket) -> int:
-        """
-        Estimated minutes until this ticket is called.
-
-        With c counters, people are called in batches of c. Free counters take
-        the first people in line straight away, everyone else waits one
-        service-time per full "round" of counters ahead of them.
-        """
+        # estimated wait in minutes
+        # with c counters people get called c at a time, so we count how many
+        # "rounds" are ahead of this person. free counters take people straight away
         pos = self.position(ticket)
         if pos is None:
             return 0
@@ -212,7 +197,7 @@ class QueueSystem:
         rounds = ahead // c + 1
         return round(rounds * self.avg_service_minutes())
 
-    # ------------------------------------------------------------------ actions
+    # --- actions ---
     def _now(self) -> str:
         return self.clock().isoformat(timespec="seconds")
 
@@ -224,7 +209,7 @@ class QueueSystem:
         return (row["m"] or 0) + 1
 
     def join(self, phone_raw: str, name: str = "", priority: bool = False):
-        """Add someone to the queue. Returns (ticket, error_message)."""
+        # adds a person, returns (ticket, error)
         with self.lock:
             phone = clean_phone(phone_raw)
             if not phone:
@@ -252,7 +237,7 @@ class QueueSystem:
                 self._set(ticket_id, status=CANCELLED, finished_at=self._now())
 
     def complete(self, counter: int) -> Optional[Ticket]:
-        """Finish the person currently at `counter`."""
+        # person at this counter is done
         with self.lock:
             t = self.serving_at(counter)
             if t:
@@ -260,7 +245,7 @@ class QueueSystem:
             return t
 
     def no_show(self, counter: int) -> Optional[Ticket]:
-        """The person called to `counter` never turned up."""
+        # called but never came
         with self.lock:
             t = self.serving_at(counter)
             if t:
@@ -268,7 +253,7 @@ class QueueSystem:
             return t
 
     def call_next(self, counter: int = 1) -> Optional[Ticket]:
-        """Finish whoever is at `counter` (if anyone) and call the next person to it."""
+        # finish whoever is at the counter and call the next person
         with self.lock:
             self.complete(counter)
             w = self.waiting()
@@ -282,7 +267,7 @@ class QueueSystem:
             return self.get(t.id)
 
     def recall(self, counter: int) -> Optional[Ticket]:
-        """Send the 'your turn' message again to whoever is at `counter`."""
+        # send the your-turn message again
         t = self.serving_at(counter)
         if t:
             self.notify(t, f"{self.business_name}: reminder - token #{t.token}, "
@@ -295,13 +280,10 @@ class QueueSystem:
             if t and t.status == WAITING:
                 self._set(ticket_id, priority=int(not t.priority))
 
-    # ------------------------------------------------------------ notifications
+    # --- sms ---
     def notify(self, ticket: Ticket, message: str) -> None:
-        """
-        Simulated SMS: messages are stored in the `messages` table and shown in
-        the app's outbox. To send real SMS, call an SMS provider here
-        (e.g. Twilio or MSG91) with ticket.phone and message.
-        """
+        # not sending real sms yet, it just gets saved in the messages table
+        # (would call twilio / msg91 here)
         self.db.execute(
             "INSERT INTO messages(sent_at, phone, body) VALUES (?, ?, ?)",
             (self._now(), ticket.phone, message),
@@ -314,7 +296,7 @@ class QueueSystem:
         ).fetchall()
 
     def process_reminders(self) -> int:
-        """Text everyone who is now within `reminder_lead` minutes of their turn. Returns count sent."""
+        # remind people who are close to their turn (only once each)
         sent = 0
         with self.lock:
             for t in self.waiting():
@@ -328,7 +310,7 @@ class QueueSystem:
                     sent += 1
         return sent
 
-    # ---------------------------------------------------------------- analytics
+    # --- stats ---
     def history(self) -> list[Ticket]:
         return self._tickets("1=1 ORDER BY joined_at")
 
@@ -348,7 +330,7 @@ class QueueSystem:
             "avg_service": (sum(mins(t.called_at, t.finished_at) for t in done) / len(done)) if done else None,
         }
 
-    # ------------------------------------------------------------------- admin
+    # --- clearing / sample data ---
     def reset_all(self) -> None:
         with self.lock:
             self.db.execute("DELETE FROM tickets")
@@ -359,7 +341,7 @@ class QueueSystem:
                      ("9876543213", "Meera"), ("9876543214", "Rohan")]
 
     def load_sample_data(self) -> None:
-        """Two weeks of past visits plus 5 people waiting right now."""
+        # 2 weeks of fake history + 5 people in the queue
         with self.lock:
             self.seed_demo_history()
             for phone, name in self.SAMPLE_PEOPLE:
@@ -367,10 +349,7 @@ class QueueSystem:
             self.set_setting("sample_loaded", 1)
 
     def ensure_sample_data(self) -> bool:
-        """
-        Load the sample data the very first time the app starts with an empty
-        database. After someone presses Clear it stays empty. Returns True if loaded.
-        """
+        # only on the very first start. if someone presses clear we leave it empty
         with self.lock:
             empty = self.db.execute("SELECT COUNT(*) AS n FROM tickets").fetchone()["n"] == 0
             if empty and self.get_setting("sample_loaded") != "1":
@@ -379,11 +358,8 @@ class QueueSystem:
             return False
 
     def seed_demo_history(self, days: int = 14, seed: int = 7) -> int:
-        """
-        Fill the database with realistic past visits (busy at 10-12 and 5-7pm)
-        so the analytics page has something to show in a presentation.
-        Returns the number of tickets created.
-        """
+        # makes up past visits so the charts have something to show
+        # busier around 10-12 and 5-7pm, quieter on weekends
         rng = random.Random(seed)
         hourly_rate = {9: 4, 10: 9, 11: 11, 12: 7, 13: 3, 14: 4, 15: 5, 16: 6, 17: 9, 18: 8, 19: 3}
         today = self.clock().replace(hour=0, minute=0, second=0, microsecond=0)

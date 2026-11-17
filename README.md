@@ -69,7 +69,7 @@ The first time the app starts, it fills itself with sample data so there's somet
 
 **2. First prototype.** Our first version was a single file, `app.py`. The queue was just a Python list in memory, with one counter and a fixed "5 minutes per person" estimate. It worked, but everything disappeared whenever the app restarted.
 
-**3. Separating logic from the interface.** We moved all the queue rules into their own file, `queue_core.py`, which has no Streamlit code at all. `app.py` only draws the screens. This made the logic much easier to test and reason about.
+**3. Separating logic from the interface.** We moved all the queue rules into their own file, `queue_core.py`, which has no Streamlit code at all. `frontend.py` only draws the screens (it was called `app.py` at first). This made the logic much easier to test and reason about.
 
 **4. Adding a database.** We replaced the in-memory list with SQLite. There are three tables: `tickets`, `messages` (the text message log) and `settings`. Now a restart doesn't lose the queue, and we keep the history we need for analytics.
 
@@ -103,7 +103,7 @@ For example, with 2 counters both busy and 5 minutes per person, positions 1 and
 
 **11. Testing.** We wrote 18 tests in `tests/test_queue_core.py` covering phone number validation, ordering, priority, no-shows, the wait formula with one and two counters, reminders and daily stats. The tests use a fake clock so we can "fast-forward" time instead of waiting.
 
-**12. Redesign.** The first version used Streamlit's default look, which felt plain. We redesigned it, taking inspiration from the clean style of sarvam.ai's website: an off-white background with a soft orange-and-blue glow at the top, big serif headings, small uppercase labels, rounded white cards and pill-shaped buttons. The colours and fonts are set in `.streamlit/config.toml`, and the rest is a block of CSS in `app.py`. We also moved the screens from a sidebar into a menu at the top, so each screen has its own address (`/staff`, `/display`, ...).
+**12. Redesign.** The first version used Streamlit's default look, which felt plain. We redesigned it, taking inspiration from the clean style of sarvam.ai's website: an off-white background with a soft orange-and-blue glow at the top, big serif headings, small uppercase labels, rounded white cards and pill-shaped buttons. The colours and fonts are set in `.streamlit/config.toml`, and the rest is a block of CSS in `frontend.py`. We also moved the screens from a sidebar into a menu at the top, so each screen has its own address (`/staff`, `/display`, ...).
 
 **13. Putting it online.** We host it on Streamlit Community Cloud. While getting it ready, we realised the server runs on UTC, which would have shown every time 5½ hours off. We fixed it by always converting to India time (`Asia/Kolkata`). We also made the QR code use whatever address the app is opened at, so it works online and on a laptop without changing anything.
 
@@ -113,7 +113,8 @@ For example, with 2 counters both busy and 5 minutes per person, positions 1 and
 
 ```
 dashQ/
-├── app.py                  # the four screens (Streamlit) and the styling
+├── app.py                  # starts the app (Streamlit Cloud runs this file); it just runs frontend.py
+├── frontend.py             # the four screens (Streamlit) and the styling
 ├── queue_core.py           # queue engine: tickets, ordering, wait times, reminders, stats
 ├── .streamlit/config.toml  # theme: colours, fonts, rounded buttons
 ├── static/                 # logo, icon and font files
